@@ -4,6 +4,7 @@ import torch
 import urllib
 import pickle
 from tqdm import tqdm
+from xlwt import Workbook
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering
 QUESTIONS_FILE_URL = "https://dl.fbaipublicfiles.com/textvqa/data/TextVQA_0.5.1_val.json"
 
@@ -59,6 +60,7 @@ if args.image_id in images_and_captions:
     if int(args.n_questions) == 0:
         question_dict = questions[args.image_id]
         answer = bert_squad(images_and_captions[args.image_id], question_dict['question'])
+        print("Question: ", question_dict['question'])
         print("Answer: ", answer)
     else:
         for _ in range(int(args.n_questions)):
@@ -69,6 +71,16 @@ if args.image_id in images_and_captions:
 # For batch processing
 elif args.image_id == 'all':
     result = []
+
+    # initialize excel sheet for storing results
+    wb = Workbook()
+    sheet1 = wb.add_sheet('Sheet 1')
+    sheet1.write(0, 0, "Image_id")
+    sheet1.write(0, 1, 'Question')
+    sheet1.write(0, 2, 'Question_id')
+    sheet1.write(0, 3, 'Caption')
+    sheet1.write(0, 4, 'Answer')
+    row_id = 1
     pbar = tqdm(total=len(images_and_captions))
 
     for image_id, caption in images_and_captions.items():
@@ -77,10 +89,18 @@ elif args.image_id == 'all':
         question_id = question_dict['question_id']
         answer = bert_squad(caption, question)
         pbar.update(1)
+        sheet1.write(row_id, 0, image_id)
+        sheet1.write(row_id, 1, question)
+        sheet1.write(row_id, 2, question_id)
+        sheet1.write(row_id, 3, caption)
+        sheet1.write(row_id, 4, answer)
         result.append({'question_id': question_id, 'answer': answer})
+        row_id += 1
     pbar.close()
     with open("textvqa_w_caps_val_result.json", "wb") as fp:
         pickle.dump(result, fp)
+    wb.save('textvqa_w_caps_result.xls')
+
 else:
     print("Image id not found, try again")
 
